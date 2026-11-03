@@ -1,0 +1,48 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/release/
+android/app/debug/
+android/**/build/
+*.jks
+*.keystore
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.iml
+
+# 本地生成
+coverage/
+*.log
+
+# Native build caches and package outputs
+android/.cxx/
+android/app/.cxx/
+*.apk
+*.aab
+
+# Local data and credentials
+.env
+.env.*
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Machine-specific development notes
+/HANDOVER.md
+/docs/ANDROID_SETUP.md
+/docs/EMULATOR_ACCEPTANCE.md
