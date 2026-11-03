@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants/routes.dart';
@@ -60,6 +61,9 @@ class CourseTableApp extends StatelessWidget {
         builder: (BuildContext context, SettingsProvider settings, Widget? _) {
           return MaterialApp(
             title: '课程表',
+            locale: const Locale('zh', 'CN'),
+            supportedLocales: const <Locale>[Locale('zh', 'CN')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),

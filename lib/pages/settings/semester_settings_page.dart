@@ -55,6 +55,7 @@ class _SemesterSettingsPageState extends State<SemesterSettingsPage> {
   Future<void> _pickDate(bool start) async {
     final DateTime? picked = await showDatePicker(
       context: context,
+      locale: const Locale('zh', 'CN'),
       initialDate: (start ? _start : _holiday).isAfter(DateTime(2100, 12, 31))
           ? DateTime(2100, 12, 31)
           : (start ? _start : _holiday),

@@ -174,17 +174,27 @@ class TimetableGrid extends StatelessWidget {
     final Color lineColor =
         Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3);
 
+    Offset? doubleTapPosition;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapUp: (TapUpDetails details) {
-        final int weekdayIndex = (details.localPosition.dx / columnWidth)
+      onDoubleTapDown: (TapDownDetails details) {
+        doubleTapPosition = details.localPosition;
+      },
+      onDoubleTap: () {
+        final Offset? position = doubleTapPosition;
+        if (position == null) return;
+        final int weekdayIndex = (position.dx / columnWidth)
             .floor()
             .clamp(0, AppConstants.daysPerWeek - 1)
             .toInt();
-        final int slotIndex = (details.localPosition.dy / rowHeight)
-            .floor()
-            .clamp(0, slotCount - 1)
-            .toInt();
+        final int slotIndex =
+            (position.dy / rowHeight).floor().clamp(0, slotCount - 1).toInt();
+        if (items.any((WeekGridItem item) =>
+            item.weekday == weekdayIndex + 1 &&
+            slotIndex + 1 >= item.startSlot &&
+            slotIndex + 1 <= item.endSlot)) {
+          return;
+        }
         onEmptyTap(weekdayIndex + 1, slotIndex + 1);
       },
       child: SizedBox(
