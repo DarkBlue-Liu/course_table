@@ -47,6 +47,26 @@ void main() {
     }
   });
 
+  test('数据库版本过高时拒绝降级并保留原课程', () async {
+    final Database db = await database.database;
+    await db.rawInsert(
+      'INSERT INTO course (name, color, created_at) VALUES (?, ?, ?)',
+      <Object>['降级保留课程', 0xFF4C6FFF, '2026-11-04'],
+    );
+    await db.setVersion(DbConstants.databaseVersion + 1);
+    await database.close();
+    await expectLater(database.database, throwsA(isA<StateError>()));
+    final Database raw = await databaseFactoryFfi.openDatabase(
+      '${tempDir.path}/test.db',
+    );
+    try {
+      expect(await raw.getVersion(), DbConstants.databaseVersion + 1);
+      expect((await raw.query('course')).single['name'], '降级保留课程');
+    } finally {
+      await raw.close();
+    }
+  });
+
   group('备份导入安全', () {
     late BackupService backup;
     late String original;

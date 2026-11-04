@@ -39,7 +39,9 @@ class AppDatabase {
         onConfigure: _onConfigure,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
-        onDowngrade: onDatabaseDowngradeDelete,
+        onDowngrade: (Database db, int oldVersion, int newVersion) async {
+          throw StateError('拒绝数据库降级 $oldVersion -> $newVersion，已保留原数据');
+        },
       ),
     );
   }

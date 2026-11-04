@@ -2,7 +2,7 @@
 
 一款面向 Android 的本地课程表应用，使用 Flutter 开发。无需注册账号，课程和学期数据保存在设备 SQLite 数据库中，支持 JSON 备份与恢复。
 
-**版本：1.0.0+1（1.0） · 中文日期与双击添加已由维护者确认实际验证通过 · 当前提供 Debug 测试包**
+**开发版本：1.1.0+2（1.1） · 正式签名与升级说明见 [1.1 发布流程](docs/RELEASE_1.1.md)**
 
 ## 功能
 
@@ -110,7 +110,7 @@ cd android
 
 macOS / Linux 对应命令为 `sh ./gradlew assembleDebug --offline --console=plain`。更换机器或新增依赖后，需要先联网下载依赖。
 
-**发布提醒：当前 `release` 构建配置仍使用 Debug 签名。** 正式分发前需配置独立签名、确认应用包名及图标，并完成真机验收，详见 [发布与上传清单](docs/RELEASE_CHECKLIST.md)。
+**Release 已配置独立正式签名，缺少签名配置时构建失败。** 构建运行 `powershell -File scripts/build-release.ps1`，详见 [1.1 发布流程](docs/RELEASE_1.1.md)。旧 Debug 版不能直接覆盖升级到新正式签名，需先导出备份。
 
 ## 验证状态
 
