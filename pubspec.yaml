@@ -1,13 +1,14 @@
 name: course_table
-description: 单学期、纯本地、无登录的课程表 App（1.1）。
+description: 单学期、纯本地、无登录的课程表 App（1.2）。
 publish_to: "none"
-version: 1.1.0+2
+version: 1.2.0+4
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
   flutter: ">=3.33.0"
 
 dependencies:
+  crypto: ^3.0.6
   flutter:
     sdk: flutter
   flutter_localizations:
