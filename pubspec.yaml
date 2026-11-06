@@ -1,7 +1,7 @@
 name: course_table
-description: 单学期、纯本地、无登录的课程表 App（1.2）。
+description: 单学期、纯本地、无登录的课程表 App（1.3）。
 publish_to: "none"
-version: 1.2.0+4
+version: 1.3.0+5
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

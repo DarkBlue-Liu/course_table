@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import '../../core/constants/routes.dart';
 import '../../domain/rules/week_grid_builder.dart';
 import '../../domain/models/time_slot.dart';
+import '../../domain/models/course_edit_seed.dart';
+import '../../domain/rules/week_calculator.dart';
+import '../../core/utils/date_utils.dart';
 import '../../domain/view_models/week_grid_item.dart';
 import '../../providers/course_list_provider.dart';
 import '../../providers/semester_provider.dart';
 import '../../providers/time_slot_provider.dart';
 import '../../providers/week_provider.dart';
-import '../../widgets/empty_state.dart';
 import 'widgets/timetable_grid.dart';
 import 'widgets/today_course_card.dart';
 import 'widgets/week_switcher.dart';
@@ -28,6 +30,8 @@ class TimetablePage extends StatefulWidget {
 class _TimetablePageState extends State<TimetablePage>
     with WidgetsBindingObserver {
   bool _editingTime = false;
+  bool _dayView = false;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
@@ -81,7 +85,34 @@ class _TimetablePageState extends State<TimetablePage>
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('课程表')),
+      appBar: AppBar(
+        leading: PopupMenuButton<String>(
+          tooltip: '切换周／日课表',
+          icon: Icon(
+              _dayView ? Icons.view_day_outlined : Icons.calendar_view_week),
+          onSelected: (String mode) {
+            if (mode == 'day' && !_dayView) {
+              final DateTime previous = _selectedDate ?? DateTime.now();
+              final bool sameWeek = firstWeekMonday != null &&
+                  WeekCalculator.rawWeek(
+                          firstWeekMonday: firstWeekMonday, today: previous) ==
+                      weekProvider.displayedWeek;
+              _selectedDate = sameWeek || firstWeekMonday == null
+                  ? previous
+                  : WeekCalculator.dateOf(
+                      firstWeekMonday: firstWeekMonday,
+                      week: weekProvider.displayedWeek,
+                      weekday: previous.weekday);
+            }
+            setState(() => _dayView = mode == 'day');
+          },
+          itemBuilder: (_) => const <PopupMenuEntry<String>>[
+            PopupMenuItem<String>(value: 'week', child: Text('周课表')),
+            PopupMenuItem<String>(value: 'day', child: Text('日课表')),
+          ],
+        ),
+        title: Text(_dayView ? '日课表' : '周课表'),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCourseEdit,
         tooltip: '添加课程',
@@ -89,38 +120,14 @@ class _TimetablePageState extends State<TimetablePage>
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
-        child: courseListProvider.isEmpty
-            ? _buildEmptyState()
-            : _buildContent(
-                weekProvider: weekProvider,
-                timeSlotProvider: timeSlotProvider,
-                firstWeekMonday: firstWeekMonday,
-                weekItems: weekItems,
-                todayItems: todayItems,
-              ),
+        child: _buildContent(
+          weekProvider: weekProvider,
+          timeSlotProvider: timeSlotProvider,
+          firstWeekMonday: firstWeekMonday,
+          weekItems: weekItems,
+          todayItems: todayItems,
+        ),
       ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double minHeight =
-            constraints.hasBoundedHeight ? constraints.maxHeight : 0;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minHeight),
-            child: EmptyState(
-              icon: Icons.calendar_month_outlined,
-              title: '还没有课程',
-              description: '添加第一门课，开始安排你的每周课表',
-              actionLabel: '添加第一门课',
-              onAction: _openCourseEdit,
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -131,32 +138,74 @@ class _TimetablePageState extends State<TimetablePage>
     required List<WeekGridItem> weekItems,
     required List<WeekGridItem> todayItems,
   }) {
+    final DateTime date = _selectedDate ?? DateTime.now();
+    final int dayWeek = firstWeekMonday == null
+        ? 1
+        : WeekCalculator.rawWeek(firstWeekMonday: firstWeekMonday, today: date);
+    final List<WeekGridItem> dayItems =
+        dayWeek < 1 || dayWeek > weekProvider.totalWeeks
+            ? <WeekGridItem>[]
+            : WeekGridBuilder.buildForDay(
+                week: dayWeek,
+                weekday: date.weekday,
+                entries: context.read<CourseListProvider>().entries,
+                timeSlots: timeSlotProvider.slots);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          WeekSwitcher(
-            displayedWeek: weekProvider.displayedWeek,
-            totalWeeks: weekProvider.totalWeeks,
-            isShowingCurrentWeek: weekProvider.isShowingCurrentWeek,
-            firstWeekMonday: firstWeekMonday,
-            onPrevious: weekProvider.previousWeek,
-            onNext: weekProvider.nextWeek,
-            onGoToWeek: weekProvider.goToWeek,
-            onLocateCurrent: weekProvider.locateCurrentWeek,
-          ),
-          TodayCourseCard(
-            items: todayItems,
-            timeSlots: timeSlotProvider.slots,
-            onCourseTap: _openCourseDetail,
-          ),
+          if (_dayView)
+            Row(
+              children: <Widget>[
+                IconButton(
+                    tooltip: '前一天',
+                    onPressed: () => _changeDay(-1),
+                    icon: const Icon(Icons.chevron_left)),
+                Expanded(
+                    child: TextButton(
+                  onPressed: _pickDay,
+                  child: Text(
+                      '${AppDateUtils.toChineseDate(date)} ${AppDateUtils.weekdayLabel(date.weekday)}'),
+                )),
+                IconButton(
+                    tooltip: '后一天',
+                    onPressed: () => _changeDay(1),
+                    icon: const Icon(Icons.chevron_right)),
+                TextButton(
+                    onPressed: () => _setDay(DateTime.now()),
+                    child: const Text('今天')),
+              ],
+            ),
+          if (_dayView && (dayWeek < 1 || dayWeek > weekProvider.totalWeeks))
+            const Padding(
+                padding: EdgeInsets.all(12), child: Text('所选日期不在教学周范围内')),
+          if (!_dayView)
+            WeekSwitcher(
+              displayedWeek: weekProvider.displayedWeek,
+              totalWeeks: weekProvider.totalWeeks,
+              isShowingCurrentWeek: weekProvider.isShowingCurrentWeek,
+              firstWeekMonday: firstWeekMonday,
+              onPrevious: weekProvider.previousWeek,
+              onNext: weekProvider.nextWeek,
+              onGoToWeek: weekProvider.goToWeek,
+              onLocateCurrent: weekProvider.locateCurrentWeek,
+            ),
+          if (!_dayView)
+            TodayCourseCard(
+              items: todayItems,
+              timeSlots: timeSlotProvider.slots,
+              onCourseTap: _openCourseDetail,
+            ),
           TimetableGrid(
-            week: weekProvider.displayedWeek,
-            items: weekItems,
+            week: _dayView ? dayWeek : weekProvider.displayedWeek,
+            items: _dayView ? dayItems : weekItems,
+            visibleWeekday: _dayView ? date.weekday : null,
             timeSlots: timeSlotProvider.slots,
             firstWeekMonday: firstWeekMonday,
-            isCurrentWeek: weekProvider.isShowingCurrentWeek,
+            isCurrentWeek: _dayView
+                ? AppDateUtils.daysBetween(date, DateTime.now()) == 0
+                : weekProvider.isShowingCurrentWeek,
             onCourseTap: _openCourseDetail,
             onEmptyTap: _handleEmptyTap,
             onTimeSlotTap: _editTimeSlot,
@@ -238,9 +287,40 @@ class _TimetablePageState extends State<TimetablePage>
     );
   }
 
-  /// 点空白格：只跳新建页，不预填星期/节次。
+  /// 点击空白格的加号后预填位置；周次仍从第1周到学期末，全部周。
   void _handleEmptyTap(int weekday, int slotIndex) {
-    Navigator.pushNamed<Object?>(context, RouteNames.courseEdit);
+    Navigator.pushNamed<Object?>(context, RouteNames.courseEdit,
+        arguments: CourseEditSeed(weekday: weekday, slotIndex: slotIndex));
+  }
+
+  void _setDay(DateTime date) {
+    setState(() => _selectedDate = DateTime(date.year, date.month, date.day));
+    final SemesterProvider semester = context.read<SemesterProvider>();
+    final DateTime? monday = semester.semester?.firstWeekMonday;
+    if (monday != null) {
+      final int week =
+          WeekCalculator.rawWeek(firstWeekMonday: monday, today: date);
+      if (week >= 1 && week <= semester.totalWeeks) {
+        context.read<WeekProvider>().goToWeek(week);
+      }
+    }
+  }
+
+  void _changeDay(int delta) {
+    final DateTime date = _selectedDate ?? DateTime.now();
+    _setDay(DateTime(date.year, date.month, date.day + delta));
+  }
+
+  Future<void> _pickDay() async {
+    final DateTime date = _selectedDate ?? DateTime.now();
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: date,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100, 12, 31));
+    if (picked != null && mounted) {
+      _setDay(picked);
+    }
   }
 
   Future<void> _handleRefresh() async {

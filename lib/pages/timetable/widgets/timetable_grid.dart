@@ -12,7 +12,7 @@ import 'time_axis.dart';
 /// 周视图网格：左侧节次轴 + 7 天等宽列，课程块用 Stack + Positioned 精确定位。
 ///
 /// 不用 GridView：课程块需要跨节次、同格重叠分列，只能用固定高度 Stack。
-class TimetableGrid extends StatelessWidget {
+class TimetableGrid extends StatefulWidget {
   const TimetableGrid({
     super.key,
     required this.week,
@@ -23,6 +23,7 @@ class TimetableGrid extends StatelessWidget {
     required this.onCourseTap,
     required this.onEmptyTap,
     this.onTimeSlotTap,
+    this.visibleWeekday,
   });
 
   /// 每节固定行高。
@@ -38,6 +39,9 @@ class TimetableGrid extends StatelessWidget {
   final List<WeekGridItem> items;
   final List<TimeSlot> timeSlots;
 
+  /// null 显示整周；1–7 只显示该星期，周日视图共用布局与点击规则。
+  final int? visibleWeekday;
+
   /// 第 1 周周一；为空时不展示日期。
   final DateTime? firstWeekMonday;
 
@@ -47,6 +51,40 @@ class TimetableGrid extends StatelessWidget {
   final ValueChanged<WeekGridItem> onCourseTap;
   final ValueChanged<TimeSlot>? onTimeSlotTap;
   final void Function(int weekday, int slotIndex) onEmptyTap;
+
+  @override
+  State<TimetableGrid> createState() => _TimetableGridState();
+}
+
+class _TimetableGridState extends State<TimetableGrid> {
+  static const double rowHeight = TimetableGrid.rowHeight;
+  static const double headerHeight = TimetableGrid.headerHeight;
+  static const int fallbackSlotCount = TimetableGrid.fallbackSlotCount;
+  int get week => widget.week;
+  List<WeekGridItem> get items => widget.items;
+  List<TimeSlot> get timeSlots => widget.timeSlots;
+  DateTime? get firstWeekMonday => widget.firstWeekMonday;
+  bool get isCurrentWeek => widget.isCurrentWeek;
+  ValueChanged<TimeSlot>? get onTimeSlotTap => widget.onTimeSlotTap;
+  List<int> get _weekdays => widget.visibleWeekday == null
+      ? List<int>.generate(AppConstants.daysPerWeek, (int i) => i + 1)
+      : <int>[widget.visibleWeekday!];
+  (int, int)? _selectedCell;
+
+  bool _occupied(int day, int slot) => items.any((WeekGridItem item) =>
+      item.weekday == day && slot >= item.startSlot && slot <= item.endSlot);
+
+  @override
+  void didUpdateWidget(covariant TimetableGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final (int, int)? selected = _selectedCell;
+    if (widget.week != oldWidget.week ||
+        widget.visibleWeekday != oldWidget.visibleWeekday ||
+        widget.timeSlots.length != oldWidget.timeSlots.length ||
+        (selected != null && _occupied(selected.$1, selected.$2))) {
+      _selectedCell = null;
+    }
+  }
 
   int get _slotCount =>
       timeSlots.isEmpty ? fallbackSlotCount : timeSlots.length;
@@ -76,7 +114,7 @@ class TimetableGrid extends StatelessWidget {
                 child: LayoutBuilder(
                   builder: (BuildContext context, BoxConstraints constraints) {
                     final double columnWidth =
-                        constraints.maxWidth / AppConstants.daysPerWeek;
+                        constraints.maxWidth / _weekdays.length;
                     return _buildGridBody(
                       context,
                       columnWidth: columnWidth,
@@ -98,8 +136,8 @@ class TimetableGrid extends StatelessWidget {
     final int todayWeekday = DateTime.now().weekday;
     final List<Widget> cells = <Widget>[];
 
-    for (int i = 0; i < AppConstants.daysPerWeek; i++) {
-      final int weekday = i + 1;
+    for (int i = 0; i < _weekdays.length; i++) {
+      final int weekday = _weekdays[i];
       final bool isToday = isCurrentWeek && weekday == todayWeekday;
       final Color labelColor =
           isToday ? scheme.primary : scheme.onSurfaceVariant;
@@ -174,28 +212,21 @@ class TimetableGrid extends StatelessWidget {
     final Color lineColor =
         Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3);
 
-    Offset? doubleTapPosition;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onDoubleTapDown: (TapDownDetails details) {
-        doubleTapPosition = details.localPosition;
-      },
-      onDoubleTap: () {
-        final Offset? position = doubleTapPosition;
-        if (position == null) return;
-        final int weekdayIndex = (position.dx / columnWidth)
+      onTapUp: (TapUpDetails details) {
+        final int column = (details.localPosition.dx / columnWidth)
             .floor()
-            .clamp(0, AppConstants.daysPerWeek - 1)
+            .clamp(0, _weekdays.length - 1)
             .toInt();
-        final int slotIndex =
-            (position.dy / rowHeight).floor().clamp(0, slotCount - 1).toInt();
-        if (items.any((WeekGridItem item) =>
-            item.weekday == weekdayIndex + 1 &&
-            slotIndex + 1 >= item.startSlot &&
-            slotIndex + 1 <= item.endSlot)) {
-          return;
-        }
-        onEmptyTap(weekdayIndex + 1, slotIndex + 1);
+        final int slot = (details.localPosition.dy / rowHeight)
+                .floor()
+                .clamp(0, slotCount - 1)
+                .toInt() +
+            1;
+        final int day = _weekdays[column];
+        setState(
+            () => _selectedCell = _occupied(day, slot) ? null : (day, slot));
       },
       child: SizedBox(
         height: gridHeight,
@@ -205,13 +236,37 @@ class TimetableGrid extends StatelessWidget {
               child: CustomPaint(
                 painter: _GridLinesPainter(
                   rowCount: slotCount,
-                  columnCount: AppConstants.daysPerWeek,
+                  columnCount: _weekdays.length,
                   rowHeight: rowHeight,
                   color: lineColor,
                 ),
               ),
             ),
             ..._buildBlocks(columnWidth),
+            if (_selectedCell != null)
+              Positioned(
+                left: _weekdays.indexOf(_selectedCell!.$1) * columnWidth,
+                top: (_selectedCell!.$2 - 1) * rowHeight,
+                width: columnWidth,
+                height: rowHeight,
+                child: Center(
+                    child: IconButton(
+                  key: const ValueKey<String>('quick-add-course'),
+                  tooltip: '添加该时段课程',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 40),
+                  style: IconButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer),
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    final (int, int) cell = _selectedCell!;
+                    setState(() => _selectedCell = null);
+                    widget.onEmptyTap(cell.$1, cell.$2);
+                  },
+                )),
+              ),
           ],
         ),
       ),
@@ -221,8 +276,8 @@ class TimetableGrid extends StatelessWidget {
   List<Widget> _buildBlocks(double columnWidth) {
     final List<Widget> blocks = <Widget>[];
     for (final WeekGridItem item in items) {
-      final int weekdayIndex = item.weekday - 1;
-      if (weekdayIndex < 0 || weekdayIndex >= AppConstants.daysPerWeek) {
+      final int weekdayIndex = _weekdays.indexOf(item.weekday);
+      if (weekdayIndex < 0 || weekdayIndex >= _weekdays.length) {
         continue;
       }
       final int laneCount = item.laneCount < 1 ? 1 : item.laneCount;
@@ -242,7 +297,10 @@ class TimetableGrid extends StatelessWidget {
           height: height,
           child: CourseBlock(
             item: item,
-            onTap: () => onCourseTap(item),
+            onTap: () {
+              setState(() => _selectedCell = null);
+              widget.onCourseTap(item);
+            },
           ),
         ),
       );

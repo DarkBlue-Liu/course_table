@@ -1,5 +1,6 @@
 import 'package:course_table/providers/semester_provider.dart';
 import 'package:course_table/core/constants/db_constants.dart';
+import 'package:course_table/core/theme/app_colors.dart';
 import 'dart:convert';
 import 'package:course_table/services/backup_service.dart';
 import 'dart:io';
@@ -45,6 +46,31 @@ void main() {
     if (tempDir.existsSync()) {
       tempDir.deleteSync(recursive: true);
     }
+  });
+
+  test('旧色、新增色和自定义色在数据库重开后原样保留', () async {
+    final List<int> colors = <int>[...AppColors.coursePalette, 0xFF123456];
+    for (int i = 0; i < colors.length; i++) {
+      await courseRepository.saveCourseWithSchedules(
+        Course(name: '颜色$i', colorValue: colors[i]),
+        const <CourseSchedule>[
+          CourseSchedule(
+              weekday: 1, startSlot: 1, endSlot: 1, startWeek: 1, endWeek: 20)
+        ],
+      );
+    }
+    await database.close();
+    database = AppDatabase(
+        factory: databaseFactoryFfi, pathOverride: '${tempDir.path}/test.db');
+    courseRepository = LocalCourseRepository(database);
+    final List<Course> restored = await courseRepository.getAllCourses();
+    expect(<String, int>{
+      for (final Course c in restored) c.name: c.colorValue
+    }, <String, int>{
+      for (int i = 0; i < colors.length; i++) '颜色$i': colors[i]
+    });
+    expect((await courseRepository.getAllSchedules()).length, colors.length);
+    expect(await (await database.database).getVersion(), 2);
   });
 
   test('数据库版本过高时拒绝降级并保留原课程', () async {

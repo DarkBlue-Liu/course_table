@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/constants/routes.dart';
 import 'core/theme/app_theme.dart';
 import 'domain/models/course.dart';
+import 'domain/models/course_edit_seed.dart';
 import 'pages/course/course_detail_page.dart';
 import 'pages/course/course_edit_page.dart';
 import 'pages/home/home_page.dart';
@@ -94,7 +95,8 @@ class CourseTableApp extends StatelessWidget {
         final Object? args = settings.arguments;
         final Course? course = args is Course ? args : null;
         return MaterialPageRoute<Object?>(
-          builder: (_) => CourseEditPage(course: course),
+          builder: (_) => CourseEditPage(
+              course: course, seed: args is CourseEditSeed ? args : null),
         );
       case RouteNames.courseDetail:
         final Object? args = settings.arguments;

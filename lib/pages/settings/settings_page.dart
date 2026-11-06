@@ -8,6 +8,7 @@ import '../../providers/semester_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/time_slot_provider.dart';
 import 'update_page.dart';
+import '../onboarding/tutorial_page.dart';
 
 /// 设置 Tab 的内容页（HomePage 直接嵌入，所以自己也提供 Scaffold / AppBar）。
 class SettingsPage extends StatelessWidget {
@@ -147,6 +148,15 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _pickThemeMode(context, settingsProvider.themeMode),
           ),
           _sectionTitle(context, '关于'),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('使用教程'),
+            subtitle: const Text('重看教程，不修改现有数据'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TutorialPage(),
+            )),
+          ),
           ListTile(
             leading: const Icon(Icons.system_update_outlined),
             title: const Text('版本与更新'),

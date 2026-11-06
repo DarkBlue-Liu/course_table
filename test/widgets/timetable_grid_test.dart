@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('空白格单击不添加，双击按星期和节次添加一次', (tester) async {
+  testWidgets('空白格先显示加号，点击加号按星期和节次添加一次', (tester) async {
     final calls = <(int, int)>[];
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -27,9 +27,9 @@ void main() {
     await tester.tapAt(position);
     await tester.pumpAndSettle(const Duration(milliseconds: 400));
     expect(calls, isEmpty);
-    await tester.tapAt(position);
-    await tester.pump(const Duration(milliseconds: 70));
-    await tester.tapAt(position);
+    expect(
+        find.byKey(const ValueKey<String>('quick-add-course')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey<String>('quick-add-course')));
     await tester.pumpAndSettle();
     expect(calls, [(3, 2)]);
   });
@@ -63,6 +63,8 @@ void main() {
     await tester.tap(find.text('数学'));
     await tester.pumpAndSettle(const Duration(milliseconds: 400));
     expect(opened, 1);
+    expect(
+        find.byKey(const ValueKey<String>('quick-add-course')), findsNothing);
     await tester.tap(find.text('数学'));
     await tester.pump(const Duration(milliseconds: 70));
     await tester.tap(find.text('数学'));

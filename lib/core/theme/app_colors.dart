@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  /// 10 个课程可选颜色（深色模式下也保持足够对比度）。
+  /// 14 个课程可选颜色。保留原十色的值和顺序，数据库仍存 ARGB。
   static const List<int> coursePalette = <int>[
     0xFF4C6FFF, // 蓝
     0xFF00A8A8, // 青
@@ -16,6 +16,10 @@ class AppColors {
     0xFF8E5BD9, // 紫
     0xFF6B7A8F, // 灰蓝
     0xFF5C4033, // 棕
+    0xFF1565C0, // 深蓝
+    0xFF00875A, // 墨绿
+    0xFFAD357E, // 莓紫
+    0xFF7952B3, // 深紫
   ];
 
   static int colorAt(int index) {

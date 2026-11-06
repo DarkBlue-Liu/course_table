@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/models/conflict.dart';
 import '../../domain/models/course.dart';
+import '../../domain/models/course_edit_seed.dart';
 import '../../domain/models/course_schedule.dart';
 import '../../providers/course_list_provider.dart';
 import '../../providers/semester_provider.dart';
@@ -16,10 +17,11 @@ import 'widgets/schedule_form.dart';
 
 /// 新建 / 编辑课程。保存成功时 `Navigator.pop(context, true)`。
 class CourseEditPage extends StatefulWidget {
-  const CourseEditPage({super.key, this.course});
+  const CourseEditPage({super.key, this.course, this.seed});
 
   /// 为 null 表示新建。
   final Course? course;
+  final CourseEditSeed? seed;
 
   @override
   State<CourseEditPage> createState() => _CourseEditPageState();
@@ -52,6 +54,13 @@ class _CourseEditPageState extends State<CourseEditPage> {
       // 已加载完成的数据，读一次即可，不需要监听。
       final CourseListProvider provider = context.read<CourseListProvider>();
       _schedules = List<CourseSchedule>.of(provider.schedulesOf(courseId));
+    } else if (widget.seed != null) {
+      _schedules = <CourseSchedule>[
+        widget.seed!.schedule(
+          totalWeeks: context.read<SemesterProvider>().totalWeeks,
+          maxSlot: context.read<TimeSlotProvider>().maxSlotIndex,
+        )
+      ];
     }
   }
 
